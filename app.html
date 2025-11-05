@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DMC App — Liquid Glass</title>
+  <link rel="stylesheet" href="leaflet/leaflet.css">
+</head>
+<style>
+
+:root {
+  --bg: #e0e6ed;
+  --glass-base: rgba(255, 255, 255, 0.4);
+  --glass-accent: rgba(255, 255, 255, 0.6);
+  --glass-highlight: rgba(255, 255, 255, 0.8);
+  --muted: #4a5568;
+  --accent1: linear-gradient(135deg, rgba(111, 168, 220, 0.6), rgba(151, 111, 245, 0.5));
+  --accent2: linear-gradient(135deg, rgba(255, 135, 160, 0.4), rgba(255, 183, 77, 0.3));
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-border-dark: rgba(0, 0, 0, 0.1);
+  --glass-glow: rgba(111, 168, 220, 0.15);
+  --glass-shadow: rgba(0, 0, 0, 0.1);
+  --glass-radius: 18px;
+  --glass-padding: 14px;
+  font-synthesis: none;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Inter, Segoe UI, system-ui, -apple-system, Roboto, Helvetica, Arial;
+  background: radial-gradient(1400px 500px at 10% 10%, rgba(111, 168, 220, 0.08), transparent), 
+              radial-gradient(1100px 400px at 90% 90%, rgba(255, 135, 160, 0.06), transparent), 
+              var(--bg);
+  color: var(--muted);
+  -webkit-font-smoothing: antialiased
+}
+
+.dataset-toggle {
+  display: flex;
+  gap: var(--glass-padding);
+  margin: var(--glass-padding) 0;
+  font-weight: 600
+}
+.dataset-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--glass-base); 
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px) saturate(200%);
+  box-shadow: 0 8px 25px var(--glass-shadow);
+  cursor: pointer;
+  transition: transform .3s ease, box-shadow .3s ease;
+  color: var(--muted);
+}
+.dataset-toggle label:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+}
+.dataset-toggle input[type="checkbox"] {
+  appearance: none;
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #cad2df, #c0c8d5);
+  position: relative;
+  border: 1px solid var(--glass-border-dark);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+.dataset-toggle input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #606060;
+  transform: translateX(0);
+  transition: transform .3s cubic-bezier(.2, .9, .2, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.dataset-toggle input[type="checkbox"]:checked {
+  background: var(--accent1);
+  box-shadow: 0 6px 25px rgba(111, 168, 220, 0.25);
+}
+.dataset-toggle input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+fieldset {
+  margin: var(--glass-padding) 0;
+  padding: var(--glass-padding) 20px;
+  border-radius: var(--glass-radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-base);
+  backdrop-filter: blur(20px) saturate(220%);
+  box-shadow: 0 15px 50px var(--glass-shadow);
+}
+legend {
+  padding: 0 12px; 
+  font-weight: 700;
+  color: var(--muted);
+  background-color: var(--bg);
+  border-radius: 8px;
+}
+#categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px
+}
+#categories div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--glass-base);
+  border: 1px solid var(--glass-border);
+  font-weight: 600;
+  color: var(--muted);
+  backdrop-filter: blur(10px) saturate(150%);
+}
+
+#mapid {
+  width: 100%;
+  height: 600px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, var(--glass-base), var(--glass-base));
+  backdrop-filter: blur(18px) saturate(180%);
+}
+
+.country-tip {
+  background: var(--glass-highlight);
+  border-radius: 16px;
+  padding: 12px 18px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(200%);
+  box-shadow: 0 10px 30px var(--glass-shadow);
+  color: var(--muted);
+}
+.country-tip b {
+  color: #222
+}
+.country-tip i {
+  color: #666
+}
+.leaflet-popup-content-wrapper {
+  background: var(--glass-highlight);
+  border-radius: var(--glass-radius);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px) saturate(220%);
+  color: var(--muted);
+  box-shadow: 0 15px 40px var(--glass-shadow);
+}
+.leaflet-popup-tip {
+  display: none
+}
+
+.legend {
+  background: var(--glass-base);
+  padding: var(--glass-padding) 20px;
+  border-radius: var(--glass-radius);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 15px 45px var(--glass-shadow);
+  color: var(--muted);
+  backdrop-filter: blur(18px) saturate(200%);
+}
+.legend .row {
+  display: flex;
+  align-items: center;
+  margin: 1px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform .25s ease, box-shadow .25s ease
+}
+.legend .row:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+.legend .row.selected {
+  box-shadow: inset 0 0 0 2px var(--accent1);
+  transform: scale(1.03);
+}
+.legend .swatch {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border-dark);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+#dmc-search-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 380px;
+  z-index: 1001
+}
+#dmc-search {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: var(--glass-radius);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-base);
+  color: var(--muted);
+  backdrop-filter: blur(16px) saturate(200%);
+  outline: none;
+  transition: box-shadow .2s ease;
+  font-size: 16px;
+}
+#dmc-search:focus {
+  box-shadow: 0 10px 30px rgba(111, 168, 220, 0.2);
+}
+#dmc-search-btn {
+  padding: 12px 20px;
+  border-radius: var(--glass-radius);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+  color: #fff;
+  background-image: var(--accent1);
+  box-shadow: 0 8px 25px rgba(111, 168, 220, 0.2);
+  margin-left: 10px;
+}
+#dmc-clear {
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  font-size: 20px;
+  color: #777;
+  cursor: pointer;
+}
+
+/* Dropdown */
+#dmc-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 580px;
+  max-height: 380px;
+  border-radius: var(--glass-radius);
+  display: none;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity .2s ease, transform .2s ease;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-highlight);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(25px) saturate(250%);
+}
+#dmc-dropdown.show {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0)
+}
+#dmc-results-list {
+  flex: 2;
+  padding: var(--glass-padding);
+  overflow: auto
+}
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  transition: background .15s ease, transform .15s ease;
+}
+.result-item:hover {
+  background: rgba(111, 168, 220, 0.1);
+  transform: translateX(8px);
+}
+.favorite-star {
+  margin-left: 8px;
+  cursor: pointer;
+  opacity: 0.9
+}
+.favorite-star.favorited {
+  color: #FFD166
+}
+
+#favorites-section {
+  padding: var(--glass-padding);
+  border-left: 1px solid rgba(0,0,0,0.05);
+  background: rgba(255,255,255,0.7);
+  min-width: 180px;
+}
+#favorites-section h4 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+#favorites-list {
+  font-size: 14px;
+}
+.favorite-item {
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color .15s ease;
+}
+.favorite-item:hover {
+  color: #3a7bd5;
+}
+#favorites-list i {
+  color: #888 !important;
+  font-size: 11px;
+}
+
+#map-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 18px 25px;
+  border-radius: var(--glass-radius);
+  background: var(--glass-highlight);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(220%);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: var(--muted);
+  font-size: 16px;
+}
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 4px solid rgba(0, 0, 0, 0.15);
+  border-top-color: rgba(0, 0, 0, 0.8);
+  animation: spin 0.9s linear infinite
+}
+
+a {
+  color: #3a7bd5;
+  text-decoration: none;
+  transition: color .2s ease;
+}
+a:hover {
+  color: #2a6bbd;
+  text-decoration: underline;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0)
+  }
+  100% {
+    transform: rotate(360deg)
+  }
+}
+
+/* NIEUWE ANIMATIES VOOR HET GLOW EFFECT */
+@keyframes fadeOut {
+  0% {
+    fill-opacity: 0.75;
+  }
+  100% {
+    fill-opacity: 0.2;
+  }
+}
+
+@keyframes glowPulse {
+  0% {
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px currentColor) drop-shadow(0 0 30px currentColor);
+  }
+  100% {
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+}
+
+@keyframes highlightFadeIn {
+  0% {
+    fill-opacity: 0.2;
+    filter: none;
+  }
+  100% {
+    fill-opacity: 0.9;
+    filter: drop-shadow(0 0 15px currentColor);
+  }
+}
+
+.leaflet-interactive {
+  transition: all 0.8s cubic-bezier(0.4, 0.1, 0.4, 0.8);
+}
+
+.leaflet-interactive:hover {
+  filter: drop-shadow(0 12px 35px rgba(111, 168, 220, 0.2));
+  cursor: pointer
+}
+
+.leaflet-interactive:focus {
+  outline: none !important;
+}
+
+.leaflet-interactive.leaflet-clickable:hover {
+  stroke-width: 0 !important;
+  stroke: none !important;
+}
+
+/* Responsive tweaks */
+@media (max-width:900px) {
+  #dmc-dropdown {
+    left: 0;
+    width: calc(100vw - var(--glass-padding) * 2);
+  }
+  #dmc-search-wrapper {
+    width: 100%
+  }
+}
+</style>
+
+<div class="dataset-toggle">
+  <label><input type="checkbox" id="NLBE" checked> NL/BE</label>
+  <label><input type="checkbox" id="UK" checked> UK</label>
+</div>
+<div style="margin:10px 0;">
+  <input type="text" id="dmc-search" placeholder="Zoek DMC...">
+  <button id="dmc-search-btn">Zoek</button>
+  <b><a style="margin-left:50px;color:var(--muted);">CTRL + Left Mouse Click om de link naar DMC te openen</a></b>
+</div>
+<div id="mapid"><div id="map-loading"><div class="spinner"></div> Kaart laden...</div></div>
+<script src="leaflet/leaflet.js"></script>
+
+<script>
+(function() {
+  console.log("MAPJS: Inline script gestart!");
+
+  // Set up Leaflet icon paths
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'leaflet/images/marker-icon-2x.png',
+    iconUrl: 'leaflet/images/marker-icon.png',
+    shadowUrl: 'leaflet/images/marker-shadow.png'
+  });
+
+  // ====== Console filter en debug logger ======
+  const origError = console.error;
+  console.error = function(...args) {
+    const msg = args.join(" ");
+    if (!msg.startsWith("MAPJS:") && (
+        msg.includes("amt-services.azurewebsites.net") ||
+        msg.includes("google-analytics")
+    )) return;
+    origError.apply(console, args);
+  };
+
+  // ====== Variabelen ======
+  var map, worldLayer, dmcData, worldData;
+  var allCategories = new Set();
+  var highlightedCountries = new Set();
+  var allDMCList = [];
+  var activeFilter = false;
+  var currentSearchTerm = '';
+  var favoriteDMCs = new Set();
+  var singleCategoryMode = false;
+  var currentSingleCategory = null;
+  var mapInitialized = false;
+
+  // ====== Map Initialization ======
+  function initMap() {
+    if (mapInitialized) return;
+
+    console.log("MAPJS: Initializing map");
+
+    // Create the map
+    map = L.map('mapid', {
+      attributionControl: false,
+      zoom: 2,
+      worldCopyJump: true
+    }).setView([20, 0], 2);
+
+    L.tileLayer('https://tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      noWrap: true
+    }).addTo(map);
+
+    // Add legend control
+    var legend = L.control({position: 'bottomleft'});
+    legend.onAdd = function() {
+      var div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = '<b>Kies Categorie</b><div id="legend-rows"></div>';
+      return div;
+    };
+    legend.addTo(map);
+
+    mapInitialized = true;
+
+    // Hide loading indicator
+    document.getElementById('map-loading').style.display = 'none';
+
+    // Load data
+    loadMapData();
+  }
+
+  function closePinnedTooltip() { if(!window.pinnedLayer) return; try{window.pinnedLayer.closeTooltip();}catch(e){} window.pinnedLayer=null; }
+
+  function getActiveCategories(){
+    if (singleCategoryMode && currentSingleCategory) {
+      return [currentSingleCategory];
+    }
+    return Array.from(allCategories);
+  }
+
+  function normalizeToArray(val){ if(!val) return []; return Array.isArray(val)?val:[val]; }
+
+  // ====== Mapping data ======
+  var nameMapping = { "albanie": "Albania","argentina": "Argentina","australie": "Australia","argentienie": "Argentina", "azerbaijan": "Azerbaijan","baltische staten": ["Estonia","Latvia","Lithuania"],"belize": "Belize", "benelux": ["Belgium","Netherlands","Luxembourg"],"belgie": "Belgium","bolivia": "Bolivia","bonaire": "Bonaire", "bulgarije": "Bulgaria","cambodja": "Cambodia","canada": "Canada","chile": "Chile","chili": "Chile", "china": "China","colombia": "Colombia","costa rica": "Costa Rica", "Congo": "Democratic Republic of the Congo", "congo (republiek)": "Democratic Republic of the Congo","cuba": "Cuba","cyprus": "Cyprus", "denemarken": "Denmark","dominicaanse republiek": "Dominican Republic","dubai": "United Arab Emirates", "duitsland": "Germany","ecuador": "Ecuador","egypte": "Egypt","el salvador": "El Salvador", "filipijnen": "Philippines","finland": "Finland","frankrijk": "France","georgie": "Georgia", "griekenland": "Greece","groenland":"Greenland","guatemala": "Guatemala","hongarije": "Hungary", "hongkong": "Hong Kong","ijsland": "Iceland","ierland": "Ireland","india": "India","indonesie": "Indonesia", "israel": "Israel","italie": "Italy","jamaica": "Jamaica","japan": "Japan","jordanie": "Jordan","kenya": "Kenya", "laos": "Laos","malediven": "Maldives","maleisie": "Malaysia","malta": "Malta","marokko": "Morocco", "mexico": "Mexico","namibie": "Namibia","nederland": "Netherlands","nieuw zeeland": "New Zealand", "norway": "Norway","noorwegen": "Norway","oman": "Oman","oostenrijk": "Austria","panama": "Panama", "paraguay": "Paraguay","peru": "Peru","polen": "Poland","portugal": "Portugal","rwanda": "Rwanda", "slovenie": "Slovenia","slowakije": "Slovakia","spanje": "Spain","sri lanka": "Sri Lanka", "suriname": "Suriname","tanzania": "Tanzania","thailand": "Thailand","tsjechie": "Czech Republic", "tunesie": "Tunisia","turkije": "Turkey","uae": "United Arab Emirates","uganda": "Uganda", "united kingdom": "United Kingdom","uruguay": "Uruguay","vietnam": "Vietnam", "zanzibar": "United Republic of Tanzania","zuid afrika": "South Africa","zuid-afrika": "South Africa", "zuid-korea": "South Korea","zweden": "Sweden","zwitserland": "Switzerland","zimbabwe": ["Zimbabwe"], "seychellen": "Seychelles","nan": [] };
+
+  var regionMapping = {
+    "adriatic": ["Slovenia","Croatia","Serbia","Montenegro","Albania"],
+    "baltic": ["Finland","Estonia","Latvia","Lithuania"],
+    "east africa": ["Kenya","United Republic of Tanzania","Uganda","Rwanda","Zanzibar"],
+    "latin america": ["Peru","Argentina","Mexico","Colombia","Chile","Ecuador","Bolivia","Uruguay","Paraguay","Panama","Costa Rica","Guatemala","El Salvador","Belize"],
+    "nordic": ["Sweden","Norway","Denmark"]
+  };
+
+  function mapNameToGeoCountries(name,datasetKey) {
+    var key=name.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[''`´]/g,"'");
+    if(regionMapping[key]!==undefined)
+    return datasetKey==="UK"?regionMapping[key]:[];
+    if(key==="benelux") return datasetKey==="NLBE"?nameMapping[key]:[];
+    if(nameMapping[key]!==undefined){ var v=nameMapping[key]; return Array.isArray(v)?v:[v]; }
+    return [String(name).trim()];
+  }
+
+  // ====== Data laden ======
+  function loadMapData() {
+    console.log("MAPJS: Loading map data");
+
+    // Show loading indicator
+    document.getElementById('map-loading').style.display = 'flex';
+
+    fetch("dmcData.json")
+    .then(res => res.json())
+    .then(json => {
+      dmcData = json;
+      buildCategoriesFromData();
+
+      allDMCList = [];
+      ["NLBE","UK"].forEach(setKey => {
+        if(dmcData[setKey]) {
+          Object.values(dmcData[setKey]).forEach(cd => {
+            Object.values(cd).forEach(catArr => {
+              normalizeToArray(catArr).forEach(dmc => {
+                allDMCList.push({name: dmc.name, source: setKey, url: dmc.url});
+              });
+            });
+          });
+        }
+      });
+
+      allDMCList = allDMCList.filter((v,i,a) => a.findIndex(t => t.name === v.name && t.source === v.source) === i);
+
+      return fetch("countries.geojson");
+    })
+    .then(res => res.json())
+    .then(json => {
+      worldData = json;
+      refreshMap();
+      document.querySelectorAll("#NLBE,#UK").forEach(cb => cb.addEventListener("change", refreshMap));
+
+      // Hide loading indicator
+      document.getElementById('map-loading').style.display = 'none';
+
+      // Setup search functionality
+      setupSearch();
+
+      // Load favorites
+      loadFavoritesFromStorage();
+
+      console.log("MAPJS: Map data loaded successfully");
+    })
+    .catch(err => {
+      console.error("MAPJS: Fout bij laden:", err);
+      document.getElementById('map-loading').innerHTML = 'Fout bij laden van de kaart. Probeer de pagina te vernieuwen.';
+    });
+  }
+
+  // Dynamic category management
+  var categoryColors = {};
+  var categoryPriority = [];
+
+  // Predefined color palette for categories
+  var colorPalette = [
+    "#FF6961", "#FFB347", "#6FA8DC", "#77DD77", "#CBAACB", "#A3A380",
+    "#FF85A2", "#8E7CC3", "#76D7EA", "#FFB7C5", "#C9A96E", "#A8D8EA",
+    "#F8B195", "#F67280", "#C06C84", "#6C5B7B", "#355C7D", "#99B898"
+  ];
+
+  function buildCategoriesFromData() {
+    allCategories.clear();
+    categoryColors = {};
+    categoryPriority = [];
+
+    ["NLBE", "UK"].forEach(setKey => {
+      if(dmcData[setKey]) {
+        Object.values(dmcData[setKey]).forEach(countryData => {
+          Object.keys(countryData).forEach(category => {
+            allCategories.add(category);
+          });
+        });
+      }
+    });
+
+    var categoriesArray = Array.from(allCategories).sort();
+
+    categoriesArray.forEach((category, index) => {
+      categoryColors[category] = colorPalette[index % colorPalette.length];
+      categoryPriority.push(category);
+    });
+
+    console.log("MAPJS: Dynamically built categories:", categoryPriority);
+    console.log("MAPJS: Category colors assigned:", categoryColors);
+  }
+
+  function updateLegend(activeCats) {
+    var rowsDiv = document.getElementById("legend-rows");
+    if (!rowsDiv) return;
+    rowsDiv.innerHTML = "";
+
+    const sortedActiveCats = Array.from(allCategories).sort((a, b) => {
+        const indexA = categoryPriority.indexOf(a);
+        const indexB = categoryPriority.indexOf(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+
+    sortedActiveCats.forEach(cat => {
+      var div = document.createElement("div");
+      div.className = "row";
+      div.setAttribute("data-cat", cat);
+
+      if (singleCategoryMode && currentSingleCategory === cat) {
+        div.classList.add("selected");
+      }
+
+      var swatch = document.createElement("div");
+      swatch.className = "swatch";
+      swatch.style.backgroundColor = categoryColors[cat] || "grey";
+      var label = document.createElement("span");
+      label.textContent = cat;
+      div.appendChild(swatch);
+      div.appendChild(label);
+      div.addEventListener("click", function() {
+        var category = this.getAttribute("data-cat");
+        if (singleCategoryMode && currentSingleCategory === category) {
+          singleCategoryMode = false;
+          currentSingleCategory = null;
+          this.classList.remove("selected");
+        } else {
+          singleCategoryMode = true;
+          currentSingleCategory = category;
+          document.querySelectorAll("#legend-rows .row").forEach(row => {
+            row.classList.remove("selected");
+          });
+          this.classList.add("selected");
+        }
+        refreshMap();
+      });
+      rowsDiv.appendChild(div);
+    });
+  }
+
+  function landsHas(set, naam) {
+    try {
+      return set.has(naam);
+    } catch(e) {
+      return false;
+    }
+  }
+
+  function renderMap(datasetKeys, activeCats, worldData) {
+    if (!map || !worldData) return;
+
+    closePinnedTooltip();
+    if (worldLayer) map.removeLayer(worldLayer);
+
+    var landenSet = new Set(), landenInfo = {}, landenTooltip = {}, landenCat = {}, landenFavorieten = new Set();
+    datasetKeys.forEach(setKey => {
+      if (dmcData[setKey]) Object.entries(dmcData[setKey]).forEach(([countryName, countryData]) => {
+        var mappedNames = mapNameToGeoCountries(countryName, setKey);
+        activeCats.forEach(category => {
+          var arr = normalizeToArray(countryData[category]);
+          var lnameArr = (mappedNames || []).map(n => n.toLowerCase().trim());
+          lnameArr.forEach(lname => {
+            if (arr.length > 0) {
+              landenSet.add(lname);
+              if (!landenCat[lname]) landenCat[lname] = new Set();
+              landenCat[lname].add(category);
+              arr.forEach(dmc => {
+                if (favoriteDMCs.has(dmc.name + "|" + setKey)) {
+                  landenFavorieten.add(lname);
+                }
+              });
+            }
+            if (!landenInfo[lname]) landenInfo[lname] = {};
+            if (!landenTooltip[lname]) landenTooltip[lname] = {};
+            if (!landenInfo[lname][setKey]) landenInfo[lname][setKey] = [];
+            if (arr.length > 0) landenInfo[lname][setKey].push(`<div><b>${category} (${arr.length})</b>: ` + arr.map(d => {
+              var isFavorite = favoriteDMCs.has(d.name + "|" + setKey);
+              return `<a href="${d.url}" target="_blank" rel="noopener noreferrer">${d.name}</a> <span class="favorite-star ${isFavorite ? 'favorited' : ''}" data-dmc="${d.name}" data-source="${setKey}">★</span>`;
+            }).join(", ") + `</div>`);
+            if (!landenTooltip[lname][setKey]) landenTooltip[lname][setKey] = [];
+            if (arr.length > 0) landenTooltip[lname][setKey].push(`${category} (${arr.length})`);
+          });
+        });
+      });
+    });
+
+    worldLayer = L.geoJSON(worldData, {
+      style: function(f) {
+        var naam = f.properties.name.toLowerCase().trim();
+        var color = "#f0f0f0";
+        var isHighlighted = landsHas(highlightedCountries, naam);
+        var hasData = landsHas(landenSet, naam);
+        
+        if (landenFavorieten.has(naam)) {
+          color = "#9370DB";
+        } else if (activeFilter && isHighlighted) {
+          // Highlighted countries during search - make them glow
+          var cats = landenCat[naam] ? Array.from(landenCat[naam]) : [];
+          var matched = false;
+          if (hasData) {
+            for (let p of categoryPriority) {
+              if (cats.includes(p) && activeCats.includes(p)) {
+                color = categoryColors[p];
+                matched = true;
+                break;
+              }
+            }
+          }
+          if (!matched) color = "#2B6D60";
+        } else if (activeFilter && !isHighlighted) {
+          // Non-highlighted countries during search - fade them out
+          color = "#f0f0f0";
+        } else {
+          // Normal mode
+          if (hasData) {
+            var cats = landenCat[naam] ? Array.from(landenCat[naam]) : [];
+            for (let p of categoryPriority) {
+              if (cats.includes(p) && activeCats.includes(p)) {
+                color = categoryColors[p];
+                break;
+              }
+            }
+          }
+          if (isHighlighted && !activeFilter) color = "#2B6D60";
+        }
+        
+        return { 
+          fillColor: color, 
+          weight: 1, 
+          color: "white", 
+          fillOpacity: activeFilter && !isHighlighted ? 0.2 : 0.75 
+        };
+      },
+      onEachFeature: function(f, layer) {
+        var naam = f.properties.name.toLowerCase().trim();
+        let tipHtml = `<b>${f.properties.name}</b>`;
+        if (landenTooltip[naam]) {
+          Object.entries(landenTooltip[naam]).forEach(([ds, entries]) => {
+            tipHtml += `<br><i>${ds}:</i> ${entries.join(", ")}`;
+          });
+        }
+        layer.bindTooltip(tipHtml, {sticky: true, className: "country-tip", direction: "auto", opacity: 0.95});
+        let popupHtml = `<b>${f.properties.name}</b>`;
+        if (landenInfo[naam]) {
+          Object.entries(landenInfo[naam]).forEach(([ds, entries]) => {
+            popupHtml += `<hr><b style="display:block;margin-top:6px;">${ds}</b>`;
+            popupHtml += entries.join("");
+          });
+        } else popupHtml += "<i>Geen data</i>";
+        layer.bindPopup(popupHtml, {
+          maxWidth: 300,
+          onOpen: function() {
+            document.querySelectorAll('.leaflet-popup-content .favorite-star').forEach(star => {
+              star.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var dmcName = this.getAttribute('data-dmc');
+                var source = this.getAttribute('data-source');
+                toggleFavorite(dmcName, source, this);
+              });
+            });
+          }
+        });
+        
+        setTimeout(() => {
+          var isHighlighted = landsHas(highlightedCountries, naam);
+          var hasData = landsHas(landenSet, naam);
+          
+          if (activeFilter) {
+            if (isHighlighted) {
+              layer.getElement().style.animation = 'glowPulse 2s ease-in-out infinite, highlightFadeIn 0.8s ease-out forwards';
+            } else {
+              layer.getElement().style.animation = 'fadeOut 0.8s ease-out forwards';
+            }
+          } else {
+            layer.getElement().style.animation = '';
+          }
+        }, 50);
+      }
+    }).addTo(map);
+
+    updateLegend(getActiveCategories());
+  }
+
+  function refreshMap() {
+    if (!worldData || !map) return;
+    var activeSets = [];
+    if (document.getElementById("NLBE")?.checked) activeSets.push("NLBE");
+    if (document.getElementById("UK")?.checked) activeSets.push("UK");
+    renderMap(activeSets, getActiveCategories(), worldData);
+  }
+
+  function highlightDMC(searchTerm, source = null) {
+    highlightedCountries.clear();
+    activeFilter = !!searchTerm;
+    currentSearchTerm = searchTerm || '';
+    if (!searchTerm) {
+      activeFilter = false;
+      refreshMap();
+      return;
+    }
+
+    ["NLBE", "UK"].forEach(setKey => {
+      if (source && setKey !== source) return;
+      if (dmcData[setKey]) Object.entries(dmcData[setKey]).forEach(([countryName, countryData]) => {
+        Object.values(countryData).forEach(catArr => {
+          normalizeToArray(catArr).forEach(dmc => {
+            if (dmc.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+              mapNameToGeoCountries(countryName, setKey).forEach(c => highlightedCountries.add(c.toLowerCase().trim()));
+            }
+          });
+        });
+      });
+    });
+
+    refreshMap();
+  }
+
+  // ====== Favorieten functies ======
+  function toggleFavorite(dmcName, source, starElement) {
+    var key = dmcName + "|" + source;
+    if (favoriteDMCs.has(key)) {
+      favoriteDMCs.delete(key);
+      if (starElement) starElement.classList.remove('favorited');
+    } else {
+      favoriteDMCs.add(key);
+      if (starElement) starElement.classList.add('favorited');
+    }
+    refreshMap();
+    updateFavoritesList();
+    saveFavoritesToStorage();
+    var openStar = document.querySelector(`#dmc-results-list .favorite-star[data-dmc="${dmcName}"][data-source="${source}"]`);
+    if (openStar) {
+      if (favoriteDMCs.has(key)) {
+        openStar.classList.add('favorited');
+      } else {
+        openStar.classList.remove('favorited');
+      }
+    }
+  }
+
+  function saveFavoritesToStorage() {
+    localStorage.setItem('favoriteDMCs', JSON.stringify(Array.from(favoriteDMCs)));
+  }
+
+  function loadFavoritesFromStorage() {
+    var saved = localStorage.getItem('favoriteDMCs');
+    if (saved) {
+      favoriteDMCs = new Set(JSON.parse(saved));
+    }
+  }
+
+  function updateFavoritesList() {
+    var favoritesList = document.getElementById('favorites-list');
+    if (!favoritesList) return;
+    favoritesList.innerHTML = '';
+    if (favoriteDMCs.size === 0) {
+      favoritesList.innerHTML = '<i style="font-size:12px; color:#888; padding: 0 8px;">Klik op een ★ om een DMC als favoriet te markeren.</i>';
+    } else {
+      favoriteDMCs.forEach(key => {
+        var [dmcName, source] = key.split('|');
+        var item = document.createElement('div');
+        item.className = 'favorite-item';
+        item.innerHTML = `<b>${dmcName}</b> <i style="color:#666">(${source})</i>`;
+        item.addEventListener('click', function() {
+          searchInput.value = dmcName;
+          highlightDMC(dmcName, source);
+          dropdown.classList.remove('show');
+        });
+        favoritesList.appendChild(item);
+      });
+    }
+  }
+
+  // ====== Zoekbalk + dropdown ======
+  var searchInput, clearBtn, dropdown, resultsList, favoritesSection;
+
+  function setupSearch() {
+    searchInput = document.getElementById("dmc-search");
+    if (!searchInput) return;
+
+    var wrapper = document.createElement('div');
+    wrapper.id = "dmc-search-wrapper";
+    searchInput.parentNode.insertBefore(wrapper, searchInput);
+    wrapper.appendChild(searchInput);
+
+    clearBtn = document.createElement('div');
+    clearBtn.id = "dmc-clear";
+    clearBtn.innerText = "×";
+    wrapper.appendChild(clearBtn);
+
+    dropdown = document.createElement('div');
+    dropdown.id = "dmc-dropdown";
+
+    resultsList = document.createElement('div');
+    resultsList.id = 'dmc-results-list';
+    dropdown.appendChild(resultsList);
+
+    favoritesSection = document.createElement('div');
+    favoritesSection.id = 'favorites-section';
+    favoritesSection.innerHTML = '<h4>Favorieten</h4><div id="favorites-list"></div>';
+    dropdown.appendChild(favoritesSection);
+
+    wrapper.appendChild(dropdown);
+
+    searchInput.addEventListener("input", () => {
+      updateDropdown(searchInput.value);
+      clearBtn.style.display = searchInput.value ? "block" : "none";
+    });
+
+    searchInput.addEventListener("focus", () => {
+      updateDropdown(searchInput.value);
+    });
+
+    searchInput.addEventListener("blur", () => {
+      setTimeout(() => dropdown.classList.remove("show"), 200);
+    });
+
+    clearBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      clearBtn.style.display = "none";
+      highlightDMC("");
+    });
+
+    document.getElementById("dmc-search-btn")?.addEventListener("click", () => {
+      highlightDMC(searchInput.value);
+    });
+  }
+
+  function updateDropdown(filter = "") {
+    if (!resultsList) return;
+    resultsList.innerHTML = '';
+
+    let nl = allDMCList.filter(d => d.source === "NLBE" && d.name.toLowerCase().includes(filter.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
+    let uk = allDMCList.filter(d => d.source === "UK" && d.name.toLowerCase().includes(filter.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
+
+    const allResults = [...nl, ...uk];
+
+    if (allResults.length === 0) {
+      resultsList.innerHTML = `<i style="font-size:12px; color:#888; padding: 0 8px;">Geen resultaten gevonden.</i>`;
+    } else {
+      allResults.forEach(dmc => {
+        var div = document.createElement("div");
+        div.className = 'result-item';
+        var isFavorite = favoriteDMCs.has(dmc.name + "|" + dmc.source);
+        div.innerHTML = `<span><b>${dmc.name}</b> <i style="color:#666">(${dmc.source})</i></span> <span class="favorite-star ${isFavorite ? 'favorited' : ''}" data-dmc="${dmc.name}" data-source="${dmc.source}">★</span>`;
+
+        div.addEventListener("click", (e) => {
+          if (!e.target.classList.contains('favorite-star')) {
+            searchInput.value = dmc.name;
+            highlightDMC(dmc.name);
+            dropdown.classList.remove("show");
+            clearBtn.style.display = "block";
+          }
+        });
+
+        var star = div.querySelector('.favorite-star');
+        star.addEventListener('click', function(e) {
+          e.stopPropagation();
+          toggleFavorite(dmc.name, dmc.source, this);
+        });
+
+        resultsList.appendChild(div);
+      });
+    }
+
+    updateFavoritesList();
+
+    if (document.activeElement === searchInput) {
+      dropdown.classList.add("show");
+    }
+  }
+
+  // ====== Keyboard shortcuts ======
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closePinnedTooltip();
+      highlightedCountries.clear();
+      activeFilter = false;
+      refreshMap();
+      if (searchInput) {
+        searchInput.value = "";
+        clearBtn.style.display = "none";
+      }
+      if (dropdown) dropdown.classList.remove('show');
+    }
+    if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    }
+    if (e.key === 'Enter' && document.activeElement === searchInput) {
+      highlightDMC(searchInput.value);
+      searchInput.blur();
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'A' && e.target.closest('.leaflet-popup-content')) {
+      e.target.setAttribute('target', '_blank');
+    }
+  }, true);
+
+  if (document.readyState === 'complete') {
+    initMap();
+  } else {
+    window.addEventListener('load', initMap);
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      console.log("MAPJS: Page became visible again");
+      if (mapInitialized && map) {
+        console.log("MAPJS: Refreshing map");
+        refreshMap();
+      } else {
+        initMap();
+      }
+    }
+  });
+
+  // Handle page show event (when returning via back button)
+  window.addEventListener('pageshow', function(event) {
+    console.log("MAPJS: pageshow event fired");
+    // Check if the page is being restored from the bfcache
+    if (event.persisted) {
+      console.log("MAPJS: Page restored from bfcache");
+      if (mapInitialized && map) {
+        console.log("MAPJS: Refreshing map");
+        refreshMap();
+      } else {
+        initMap();
+      }
+    }
+  });
+})();
+</script>
